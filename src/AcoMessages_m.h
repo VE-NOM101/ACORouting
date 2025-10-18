@@ -78,10 +78,12 @@ inline void doParsimUnpacking(omnetpp::cCommBuffer *b, DataMsg& obj) {obj.parsim
  * {
  *     int srcAddress;
  *     int destAddress;
+ *     int currentNode;  // current position of ant
  *     int hopCount = 0;
  *     bool isForwardAnt = true;  // true for forward ant, false for backward ant
  *     int visitedNodes[];  // stores path traversed
  *     double pathCost = 0.0;  // accumulated cost along path
+ *     int iteration;  // ACO iteration number
  * }
  * </pre>
  */
@@ -90,11 +92,13 @@ class AntMsg : public ::omnetpp::cPacket
   protected:
     int srcAddress = 0;
     int destAddress = 0;
+    int currentNode = 0;
     int hopCount = 0;
     bool isForwardAnt_ = true;
     int *visitedNodes = nullptr;
     size_t visitedNodes_arraysize = 0;
     double pathCost = 0.0;
+    int iteration = 0;
 
   private:
     void copy(const AntMsg& other);
@@ -117,6 +121,9 @@ class AntMsg : public ::omnetpp::cPacket
     virtual int getDestAddress() const;
     virtual void setDestAddress(int destAddress);
 
+    virtual int getCurrentNode() const;
+    virtual void setCurrentNode(int currentNode);
+
     virtual int getHopCount() const;
     virtual void setHopCount(int hopCount);
 
@@ -134,6 +141,9 @@ class AntMsg : public ::omnetpp::cPacket
 
     virtual double getPathCost() const;
     virtual void setPathCost(double pathCost);
+
+    virtual int getIteration() const;
+    virtual void setIteration(int iteration);
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const AntMsg& obj) {obj.parsimPack(b);}

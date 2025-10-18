@@ -596,6 +596,7 @@ void AntMsg::copy(const AntMsg& other)
 {
     this->srcAddress = other.srcAddress;
     this->destAddress = other.destAddress;
+    this->currentNode = other.currentNode;
     this->hopCount = other.hopCount;
     this->isForwardAnt_ = other.isForwardAnt_;
     delete [] this->visitedNodes;
@@ -605,6 +606,7 @@ void AntMsg::copy(const AntMsg& other)
         this->visitedNodes[i] = other.visitedNodes[i];
     }
     this->pathCost = other.pathCost;
+    this->iteration = other.iteration;
 }
 
 void AntMsg::parsimPack(omnetpp::cCommBuffer *b) const
@@ -612,11 +614,13 @@ void AntMsg::parsimPack(omnetpp::cCommBuffer *b) const
     ::omnetpp::cPacket::parsimPack(b);
     doParsimPacking(b,this->srcAddress);
     doParsimPacking(b,this->destAddress);
+    doParsimPacking(b,this->currentNode);
     doParsimPacking(b,this->hopCount);
     doParsimPacking(b,this->isForwardAnt_);
     b->pack(visitedNodes_arraysize);
     doParsimArrayPacking(b,this->visitedNodes,visitedNodes_arraysize);
     doParsimPacking(b,this->pathCost);
+    doParsimPacking(b,this->iteration);
 }
 
 void AntMsg::parsimUnpack(omnetpp::cCommBuffer *b)
@@ -624,6 +628,7 @@ void AntMsg::parsimUnpack(omnetpp::cCommBuffer *b)
     ::omnetpp::cPacket::parsimUnpack(b);
     doParsimUnpacking(b,this->srcAddress);
     doParsimUnpacking(b,this->destAddress);
+    doParsimUnpacking(b,this->currentNode);
     doParsimUnpacking(b,this->hopCount);
     doParsimUnpacking(b,this->isForwardAnt_);
     delete [] this->visitedNodes;
@@ -635,6 +640,7 @@ void AntMsg::parsimUnpack(omnetpp::cCommBuffer *b)
         doParsimArrayUnpacking(b,this->visitedNodes,visitedNodes_arraysize);
     }
     doParsimUnpacking(b,this->pathCost);
+    doParsimUnpacking(b,this->iteration);
 }
 
 int AntMsg::getSrcAddress() const
@@ -655,6 +661,16 @@ int AntMsg::getDestAddress() const
 void AntMsg::setDestAddress(int destAddress)
 {
     this->destAddress = destAddress;
+}
+
+int AntMsg::getCurrentNode() const
+{
+    return this->currentNode;
+}
+
+void AntMsg::setCurrentNode(int currentNode)
+{
+    this->currentNode = currentNode;
 }
 
 int AntMsg::getHopCount() const
@@ -753,6 +769,16 @@ void AntMsg::setPathCost(double pathCost)
     this->pathCost = pathCost;
 }
 
+int AntMsg::getIteration() const
+{
+    return this->iteration;
+}
+
+void AntMsg::setIteration(int iteration)
+{
+    this->iteration = iteration;
+}
+
 class AntMsgDescriptor : public omnetpp::cClassDescriptor
 {
   private:
@@ -760,10 +786,12 @@ class AntMsgDescriptor : public omnetpp::cClassDescriptor
     enum FieldConstants {
         FIELD_srcAddress,
         FIELD_destAddress,
+        FIELD_currentNode,
         FIELD_hopCount,
         FIELD_isForwardAnt,
         FIELD_visitedNodes,
         FIELD_pathCost,
+        FIELD_iteration,
     };
   public:
     AntMsgDescriptor();
@@ -830,7 +858,7 @@ const char *AntMsgDescriptor::getProperty(const char *propertyName) const
 int AntMsgDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
-    return base ? 6+base->getFieldCount() : 6;
+    return base ? 8+base->getFieldCount() : 8;
 }
 
 unsigned int AntMsgDescriptor::getFieldTypeFlags(int field) const
@@ -844,12 +872,14 @@ unsigned int AntMsgDescriptor::getFieldTypeFlags(int field) const
     static unsigned int fieldTypeFlags[] = {
         FD_ISEDITABLE,    // FIELD_srcAddress
         FD_ISEDITABLE,    // FIELD_destAddress
+        FD_ISEDITABLE,    // FIELD_currentNode
         FD_ISEDITABLE,    // FIELD_hopCount
         FD_ISEDITABLE,    // FIELD_isForwardAnt
         FD_ISARRAY | FD_ISEDITABLE | FD_ISRESIZABLE,    // FIELD_visitedNodes
         FD_ISEDITABLE,    // FIELD_pathCost
+        FD_ISEDITABLE,    // FIELD_iteration
     };
-    return (field >= 0 && field < 6) ? fieldTypeFlags[field] : 0;
+    return (field >= 0 && field < 8) ? fieldTypeFlags[field] : 0;
 }
 
 const char *AntMsgDescriptor::getFieldName(int field) const
@@ -863,12 +893,14 @@ const char *AntMsgDescriptor::getFieldName(int field) const
     static const char *fieldNames[] = {
         "srcAddress",
         "destAddress",
+        "currentNode",
         "hopCount",
         "isForwardAnt",
         "visitedNodes",
         "pathCost",
+        "iteration",
     };
-    return (field >= 0 && field < 6) ? fieldNames[field] : nullptr;
+    return (field >= 0 && field < 8) ? fieldNames[field] : nullptr;
 }
 
 int AntMsgDescriptor::findField(const char *fieldName) const
@@ -877,10 +909,12 @@ int AntMsgDescriptor::findField(const char *fieldName) const
     int baseIndex = base ? base->getFieldCount() : 0;
     if (strcmp(fieldName, "srcAddress") == 0) return baseIndex + 0;
     if (strcmp(fieldName, "destAddress") == 0) return baseIndex + 1;
-    if (strcmp(fieldName, "hopCount") == 0) return baseIndex + 2;
-    if (strcmp(fieldName, "isForwardAnt") == 0) return baseIndex + 3;
-    if (strcmp(fieldName, "visitedNodes") == 0) return baseIndex + 4;
-    if (strcmp(fieldName, "pathCost") == 0) return baseIndex + 5;
+    if (strcmp(fieldName, "currentNode") == 0) return baseIndex + 2;
+    if (strcmp(fieldName, "hopCount") == 0) return baseIndex + 3;
+    if (strcmp(fieldName, "isForwardAnt") == 0) return baseIndex + 4;
+    if (strcmp(fieldName, "visitedNodes") == 0) return baseIndex + 5;
+    if (strcmp(fieldName, "pathCost") == 0) return baseIndex + 6;
+    if (strcmp(fieldName, "iteration") == 0) return baseIndex + 7;
     return base ? base->findField(fieldName) : -1;
 }
 
@@ -895,12 +929,14 @@ const char *AntMsgDescriptor::getFieldTypeString(int field) const
     static const char *fieldTypeStrings[] = {
         "int",    // FIELD_srcAddress
         "int",    // FIELD_destAddress
+        "int",    // FIELD_currentNode
         "int",    // FIELD_hopCount
         "bool",    // FIELD_isForwardAnt
         "int",    // FIELD_visitedNodes
         "double",    // FIELD_pathCost
+        "int",    // FIELD_iteration
     };
-    return (field >= 0 && field < 6) ? fieldTypeStrings[field] : nullptr;
+    return (field >= 0 && field < 8) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **AntMsgDescriptor::getFieldPropertyNames(int field) const
@@ -987,10 +1023,12 @@ std::string AntMsgDescriptor::getFieldValueAsString(omnetpp::any_ptr object, int
     switch (field) {
         case FIELD_srcAddress: return long2string(pp->getSrcAddress());
         case FIELD_destAddress: return long2string(pp->getDestAddress());
+        case FIELD_currentNode: return long2string(pp->getCurrentNode());
         case FIELD_hopCount: return long2string(pp->getHopCount());
         case FIELD_isForwardAnt: return bool2string(pp->isForwardAnt());
         case FIELD_visitedNodes: return long2string(pp->getVisitedNodes(i));
         case FIELD_pathCost: return double2string(pp->getPathCost());
+        case FIELD_iteration: return long2string(pp->getIteration());
         default: return "";
     }
 }
@@ -1009,10 +1047,12 @@ void AntMsgDescriptor::setFieldValueAsString(omnetpp::any_ptr object, int field,
     switch (field) {
         case FIELD_srcAddress: pp->setSrcAddress(string2long(value)); break;
         case FIELD_destAddress: pp->setDestAddress(string2long(value)); break;
+        case FIELD_currentNode: pp->setCurrentNode(string2long(value)); break;
         case FIELD_hopCount: pp->setHopCount(string2long(value)); break;
         case FIELD_isForwardAnt: pp->setIsForwardAnt(string2bool(value)); break;
         case FIELD_visitedNodes: pp->setVisitedNodes(i,string2long(value)); break;
         case FIELD_pathCost: pp->setPathCost(string2double(value)); break;
+        case FIELD_iteration: pp->setIteration(string2long(value)); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'AntMsg'", field);
     }
 }
@@ -1029,10 +1069,12 @@ omnetpp::cValue AntMsgDescriptor::getFieldValue(omnetpp::any_ptr object, int fie
     switch (field) {
         case FIELD_srcAddress: return pp->getSrcAddress();
         case FIELD_destAddress: return pp->getDestAddress();
+        case FIELD_currentNode: return pp->getCurrentNode();
         case FIELD_hopCount: return pp->getHopCount();
         case FIELD_isForwardAnt: return pp->isForwardAnt();
         case FIELD_visitedNodes: return pp->getVisitedNodes(i);
         case FIELD_pathCost: return pp->getPathCost();
+        case FIELD_iteration: return pp->getIteration();
         default: throw omnetpp::cRuntimeError("Cannot return field %d of class 'AntMsg' as cValue -- field index out of range?", field);
     }
 }
@@ -1051,10 +1093,12 @@ void AntMsgDescriptor::setFieldValue(omnetpp::any_ptr object, int field, int i, 
     switch (field) {
         case FIELD_srcAddress: pp->setSrcAddress(omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_destAddress: pp->setDestAddress(omnetpp::checked_int_cast<int>(value.intValue())); break;
+        case FIELD_currentNode: pp->setCurrentNode(omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_hopCount: pp->setHopCount(omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_isForwardAnt: pp->setIsForwardAnt(value.boolValue()); break;
         case FIELD_visitedNodes: pp->setVisitedNodes(i,omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_pathCost: pp->setPathCost(value.doubleValue()); break;
+        case FIELD_iteration: pp->setIteration(omnetpp::checked_int_cast<int>(value.intValue())); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'AntMsg'", field);
     }
 }

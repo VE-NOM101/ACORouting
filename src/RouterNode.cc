@@ -14,8 +14,16 @@ Define_Module(RouterNode);
 
 // Static member initialization
 std::map<std::pair<int, int>, double> RouterNode::globalCostTable;
+std::map<std::pair<int, int>, double> RouterNode::pheromoneTable;
 int RouterNode::routersInitialized = 0;
-int RouterNode::totalRouters = 6;  // We have 6 routers in our network
+int RouterNode::totalRouters = 6;
+
+// ACO Parameters
+const double RouterNode::ALPHA = 1.0;  // pheromone importance
+const double RouterNode::BETA = 2.0;   // heuristic importance
+const double RouterNode::RHO = 0.1;    // evaporation rate (10%)
+const double RouterNode::INITIAL_PHEROMONE = 1.0;
+const double RouterNode::Q = 100.0;    // pheromone deposit factor
 
 void RouterNode::initialize()
 {
@@ -36,8 +44,10 @@ void RouterNode::initialize()
 
     // Print table immediately after last router initializes
     if (routersInitialized == totalRouters) {
-        EV << "\nAll routers initialized. Printing global cost table...\n\n";
+        EV << "\nAll routers initialized. Building ACO data structures...\n\n";
         printGlobalCostTable();
+        initializePheromones();
+        printPheromoneTable();
     }
 }
 
@@ -87,6 +97,19 @@ void RouterNode::addNeighborsToGlobalTable()
     }
 }
 
+void RouterNode::initializePheromones()
+{
+    EV << "\n=== Initializing Pheromone Table ===\n";
+
+    // Initialize pheromones for all links in global cost table
+    for (const auto &entry : globalCostTable) {
+        pheromoneTable[entry.first] = INITIAL_PHEROMONE;
+    }
+
+    EV << "Initialized " << pheromoneTable.size() << " pheromone entries with value "
+       << INITIAL_PHEROMONE << "\n";
+}
+
 void RouterNode::printNeighbors()
 {
     EV << "Router " << address << " neighbors: ";
@@ -116,6 +139,76 @@ void RouterNode::printGlobalCostTable()
     EV << "------------------------\n";
     EV << "Total links: " << globalCostTable.size() << "\n";
     EV << "========================================\n\n";
+}
+
+void RouterNode::printPheromoneTable()
+{
+    EV << "\n========================================\n";
+    EV << "=== PHEROMONE TABLE (INITIAL) ===\n";
+    EV << "========================================\n";
+    EV << "Link (i->j) | Pheromone | Visibility\n";
+    EV << "----------------------------------------\n";
+
+    for (const auto &entry : pheromoneTable) {
+        int from = entry.first.first;
+        int to = entry.first.second;
+        double pheromone = entry.second;
+        double visibility = getVisibility(from, to);
+
+        EV << "  " << from << " -> " << to
+           << "  |  " << pheromone
+           << "  |  " << visibility << "\n";
+    }
+    EV << "========================================\n\n";
+
+    EV << "ACO Parameters:\n";
+    EV << "  ALPHA (pheromone importance): " << ALPHA << "\n";
+    EV << "  BETA (visibility importance): " << BETA << "\n";
+    EV << "  RHO (evaporation rate): " << RHO << "\n";
+    EV << "  Q (deposit factor): " << Q << "\n";
+    EV << "========================================\n\n";
+}
+
+double RouterNode::getVisibility(int nodeA, int nodeB)
+{
+    double cost = getLinkCost(nodeA, nodeB);
+    if (cost > 0) {
+        return 1.0 / cost;  // visibility (eta) = 1 / cost
+    }
+    return 0.0;
+}
+
+double RouterNode::getPheromone(int nodeA, int nodeB)
+{
+    std::pair<int, int> link(nodeA, nodeB);
+    auto it = pheromoneTable.find(link);
+    if (it != pheromoneTable.end()) {
+        return it->second;
+    }
+    return 0.0;
+}
+
+void RouterNode::updatePheromone(int nodeA, int nodeB, double delta)
+{
+    std::pair<int, int> link(nodeA, nodeB);
+    pheromoneTable[link] += delta;
+
+    // Ensure pheromone doesn't go below minimum threshold
+    if (pheromoneTable[link] < 0.01) {
+        pheromoneTable[link] = 0.01;
+    }
+}
+
+void RouterNode::evaporatePheromones()
+{
+    for (auto &entry : pheromoneTable) {
+        entry.second *= (1.0 - RHO);
+
+        // Ensure minimum pheromone level
+        if (entry.second < 0.01) {
+            entry.second = 0.01;
+        }
+    }
 }
 
 double RouterNode::getLinkCost(int nodeA, int nodeB)

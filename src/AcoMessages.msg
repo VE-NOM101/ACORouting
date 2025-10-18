@@ -13,8 +13,10 @@ packet DataMsg {
 packet AntMsg {
     int srcAddress;
     int destAddress;
+    int currentNode;  // current position of ant
     int hopCount = 0;
     bool isForwardAnt = true;  // true for forward ant, false for backward ant
     int visitedNodes[];  // stores path traversed
     double pathCost = 0.0;  // accumulated cost along path
+    int iteration;  // ACO iteration number
 }

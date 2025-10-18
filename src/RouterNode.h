@@ -12,6 +12,7 @@
 #include <omnetpp.h>
 #include <map>
 #include <vector>
+#include <cmath>
 
 using namespace omnetpp;
 
@@ -34,10 +35,25 @@ private:
     static int routersInitialized;
     static int totalRouters;
 
+    // ACO Parameters
+    static std::map<std::pair<int, int>, double> pheromoneTable;
+    static const double ALPHA;  // pheromone importance
+    static const double BETA;   // heuristic importance (visibility)
+    static const double RHO;    // evaporation rate
+    static const double INITIAL_PHEROMONE;
+    static const double Q;      // pheromone deposit factor
+
     void discoverNeighbors();
     void addNeighborsToGlobalTable();
+    void initializePheromones();
     void printNeighbors();
     void printGlobalCostTable();
+    void printPheromoneTable();
+
+    double getVisibility(int nodeA, int nodeB);
+    double getPheromone(int nodeA, int nodeB);
+    void updatePheromone(int nodeA, int nodeB, double delta);
+    void evaporatePheromones();
 
 protected:
     virtual void initialize() override;
@@ -49,5 +65,3 @@ public:
 };
 
 #endif
-
-
