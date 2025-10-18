@@ -9,6 +9,7 @@ simple RouterNode
         @display("i=abstract/router");
     gates:
         inout port[];  // variable number of ports
+        input directIn @directIn;  // NEW: dedicated gate for sendDirect()
 }
 
 // Device (host) module

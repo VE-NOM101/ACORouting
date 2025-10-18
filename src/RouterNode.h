@@ -10,9 +10,11 @@
 #define ROUTERNODE_H
 
 #include <omnetpp.h>
+#include "AcoMessages_m.h"
 #include <map>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 using namespace omnetpp;
 
@@ -42,6 +44,12 @@ private:
     static const double RHO;    // evaporation rate
     static const double INITIAL_PHEROMONE;
     static const double Q;      // pheromone deposit factor
+    static const int MAX_ITERATIONS;
+    static const int NUM_ANTS;  // equal to number of routers
+
+    // ACO state
+    static int currentIteration;
+    static int antsCompleted;
 
     void discoverNeighbors();
     void addNeighborsToGlobalTable();
@@ -54,6 +62,16 @@ private:
     double getPheromone(int nodeA, int nodeB);
     void updatePheromone(int nodeA, int nodeB, double delta);
     void evaporatePheromones();
+
+    // Ant handling
+    void startAcoAlgorithm();
+    void launchAnts();
+    void handleForwardAnt(AntMsg *ant);
+    void handleBackwardAnt(AntMsg *ant);
+    int selectNextHop(AntMsg *ant);
+    double calculateProbability(int currentNode, int nextNode, AntMsg *ant);
+    bool isNodeVisited(AntMsg *ant, int node);
+    int getGateIndexToNeighbor(int neighborAddr);
 
 protected:
     virtual void initialize() override;
