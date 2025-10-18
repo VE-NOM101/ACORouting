@@ -18,7 +18,13 @@ void Device::initialize()
     connectedRouter = par("connectedRouter");
 
     EV << "Device " << address << " initialized\n";
-    EV << "  Connected to router: " << connectedRouter << "\n";
+
+    // Get the connected router info
+    cGate *outGate = gate("port$o");
+    if (outGate->isConnected()) {
+        cModule *routerModule = outGate->getPathEndGate()->getOwnerModule();
+        EV << "  Connected to: " << routerModule->getFullName() << "\n";
+    }
 
     // Send a test message at simulation start (only from device[0])
     if (address == 100) {
@@ -30,7 +36,7 @@ void Device::initialize()
 void Device::handleMessage(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
-        EV << "Device " << address << " sending test message\n";
+        EV << "Device " << address << " sending test message to connected router\n";
         cMessage *outMsg = new cMessage("TestFromDevice");
         send(outMsg, "port$o");
         delete msg;
@@ -39,4 +45,5 @@ void Device::handleMessage(cMessage *msg)
         delete msg;
     }
 }
+
 
