@@ -15,8 +15,12 @@ Define_Module(RouterNode);
 // Static member initialization
 std::map<std::pair<int, int>, double> RouterNode::globalCostTable;
 std::map<std::pair<int, int>, double> RouterNode::pheromoneTable;
+std::map<std::pair<int, int>, int> RouterNode::routingTable;
 int RouterNode::routersInitialized = 0;
 int RouterNode::totalRouters = 6;
+
+// Add with other static initializations:
+bool RouterNode::iterationScheduled = false;
 
 // ACO Parameters
 const double RouterNode::ALPHA = 1.0;  // pheromone importance
@@ -185,14 +189,14 @@ void RouterNode::printPheromoneTable()
 
 void RouterNode::startAcoAlgorithm()
 {
-    if (address == 0) {  // Router 0 coordinates ACO
-        EV << "\n*****************************************\n";
-        EV << "*** STARTING ACO ITERATION " << (currentIteration + 1) << " ***\n";
-        EV << "*****************************************\n\n";
-
-        antsCompleted = 0;
-        launchAnts();
-    }
+    iterationScheduled = false;  // Reset flag for the new iteration!
+       if (address == 0) {  // Only Coordinator Router 0 launches ants
+           EV << "\n*****************************************\n";
+           EV << "*** STARTING ACO ITERATION " << (currentIteration + 1) << " ***\n";
+           EV << "*****************************************\n\n";
+           antsCompleted = 0;
+           launchAnts();
+       }
 }
 
 void RouterNode::launchAnts()
@@ -362,19 +366,40 @@ void RouterNode::handleForwardAnt(AntMsg *ant)
             // Path too short, count as completed
             antsCompleted++;
 
-            if (antsCompleted >= NUM_ANTS) {
+            if (antsCompleted >= NUM_ANTS && !iterationScheduled) {
                 EV << "\n*** ALL ANTS COMPLETED ITERATION " << (currentIteration + 1) << " ***\n";
+                iterationScheduled = true;  // Prevent other routers from scheduling
+
+                // Evaporate pheromones
                 evaporatePheromones();
+
                 currentIteration++;
 
                 if (currentIteration < MAX_ITERATIONS) {
+                    // ANY router can schedule, but only first one due to flag
                     cMessage *nextIter = new cMessage("StartACO");
-                    scheduleAt(simTime() + 1.0, nextIter);
+
+                    // Send the message directly to Router 0
+                    cModule *network = getParentModule();
+                    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+                        cModule *mod = *it;
+                        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == 0) {
+                            sendDirect(nextIter, 1.0, 0.0, mod, "directIn");  // delay of 1.0 second
+                            EV << "Router " << address << " scheduling next iteration on Router 0 at t="
+                               << (simTime() + 1.0) << "\n\n";
+                            break;
+                        }
+                    }
                 } else {
+                    // Algorithm complete - build routing table
                     EV << "\n*** ACO ALGORITHM COMPLETED ***\n";
                     printPheromoneTable();
+                    buildRoutingTable();
+                    printRoutingTable();
                 }
             }
+
+
         }
 
         delete ant;
@@ -390,17 +415,36 @@ void RouterNode::handleForwardAnt(AntMsg *ant)
         // Count this as completed (even though failed)
         antsCompleted++;
 
-        if (antsCompleted >= NUM_ANTS) {
+        if (antsCompleted >= NUM_ANTS && !iterationScheduled) {
             EV << "\n*** ALL ANTS COMPLETED ITERATION " << (currentIteration + 1) << " ***\n";
+            iterationScheduled = true;  // Prevent other routers from scheduling
+
+            // Evaporate pheromones
             evaporatePheromones();
+
             currentIteration++;
 
             if (currentIteration < MAX_ITERATIONS) {
+                // ANY router can schedule, but only first one due to flag
                 cMessage *nextIter = new cMessage("StartACO");
-                scheduleAt(simTime() + 1.0, nextIter);
+
+                // Send the message directly to Router 0
+                cModule *network = getParentModule();
+                for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+                    cModule *mod = *it;
+                    if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == 0) {
+                        sendDirect(nextIter, 1.0, 0.0, mod, "directIn");  // delay of 1.0 second
+                        EV << "Router " << address << " scheduling next iteration on Router 0 at t="
+                           << (simTime() + 1.0) << "\n\n";
+                        break;
+                    }
+                }
             } else {
+                // Algorithm complete - build routing table
                 EV << "\n*** ACO ALGORITHM COMPLETED ***\n";
                 printPheromoneTable();
+                buildRoutingTable();
+                printRoutingTable();
             }
         }
 
@@ -467,8 +511,9 @@ void RouterNode::handleBackwardAnt(AntMsg *ant)
         antsCompleted++;
 
         // Check if all ants completed
-        if (antsCompleted >= NUM_ANTS) {
+        if (antsCompleted >= NUM_ANTS && !iterationScheduled) {
             EV << "\n*** ALL ANTS COMPLETED ITERATION " << (currentIteration + 1) << " ***\n";
+            iterationScheduled = true;  // Prevent other routers from scheduling
 
             // Evaporate pheromones
             evaporatePheromones();
@@ -476,12 +521,26 @@ void RouterNode::handleBackwardAnt(AntMsg *ant)
             currentIteration++;
 
             if (currentIteration < MAX_ITERATIONS) {
-                // Schedule next iteration
+                // ANY router can schedule, but only first one due to flag
                 cMessage *nextIter = new cMessage("StartACO");
-                scheduleAt(simTime() + 1.0, nextIter);
+
+                // Send the message directly to Router 0
+                cModule *network = getParentModule();
+                for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+                    cModule *mod = *it;
+                    if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == 0) {
+                        sendDirect(nextIter, 1.0, 0.0, mod, "directIn");  // delay of 1.0 second
+                        EV << "Router " << address << " scheduling next iteration on Router 0 at t="
+                           << (simTime() + 1.0) << "\n\n";
+                        break;
+                    }
+                }
             } else {
+                // Algorithm complete - build routing table
                 EV << "\n*** ACO ALGORITHM COMPLETED ***\n";
                 printPheromoneTable();
+                buildRoutingTable();
+                printRoutingTable();
             }
         }
 
@@ -578,9 +637,104 @@ void RouterNode::handleMessage(cMessage *msg)
         } else {
             handleBackwardAnt(ant);
         }
+    } else if (strcmp(msg->getName(), "StartACO") == 0) {  // ADD THIS LINE
+        startAcoAlgorithm();  // ADD THIS LINE
+        delete msg;  // ADD THIS LINE
     } else {
         EV << "Router " << address << " received message: " << msg->getName() << "\n";
         delete msg;
     }
 }
 
+
+int RouterNode::getBestNextHop(int from, int to)
+{
+    // Find neighbor of 'from' with highest pheromone toward 'to'
+    double maxProbability = -1.0;
+    int bestNextHop = -1;
+
+    cModule *network = getParentModule();
+    RouterNode *fromRouter = nullptr;
+
+    // Find the router module for 'from'
+    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+        cModule *mod = *it;
+        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
+            fromRouter = check_and_cast<RouterNode *>(mod);
+            break;
+        }
+    }
+
+    if (!fromRouter) return -1;
+
+    // Check all neighbors of 'from'
+    for (const auto &neighbor : fromRouter->neighbors) {
+        int nextNode = neighbor.neighborAddress;
+
+        // Calculate attractiveness: pheromone^alpha * visibility^beta
+        double tau = getPheromone(from, nextNode);
+        double eta = getVisibility(from, nextNode);
+        double probability = pow(tau, ALPHA) * pow(eta, BETA);
+
+        if (probability > maxProbability) {
+            maxProbability = probability;
+            bestNextHop = nextNode;
+        }
+    }
+
+    return bestNextHop;
+}
+
+void RouterNode::buildRoutingTable()
+{
+    EV << "\n========================================\n";
+    EV << "=== BUILDING CENTRALIZED ROUTING TABLE ===\n";
+    EV << "========================================\n\n";
+
+    routingTable.clear();
+
+    // For each router pair, determine best next hop based on pheromones
+    for (int src = 0; src < totalRouters; src++) {
+        for (int dest = 0; dest < totalRouters; dest++) {
+            if (src != dest) {
+                int nextHop = getBestNextHop(src, dest);
+
+                if (nextHop != -1) {
+                    std::pair<int, int> route(src, dest);
+                    routingTable[route] = nextHop;
+
+                    EV << "Route: " << src << " -> " << dest
+                       << " | Next hop: " << nextHop << "\n";
+                }
+            }
+        }
+    }
+
+    EV << "\nRouting table built with " << routingTable.size() << " entries\n";
+    EV << "========================================\n\n";
+}
+
+void RouterNode::printRoutingTable()
+{
+    EV << "\n========================================\n";
+    EV << "=== FINAL CENTRALIZED ROUTING TABLE ===\n";
+    EV << "========================================\n";
+    EV << "Source | Destination | Next Hop\n";
+    EV << "------------------------------------\n";
+
+    for (int src = 0; src < totalRouters; src++) {
+        for (int dest = 0; dest < totalRouters; dest++) {
+            if (src != dest) {
+                std::pair<int, int> route(src, dest);
+                auto it = routingTable.find(route);
+
+                if (it != routingTable.end()) {
+                    EV << "   " << src << "   |      " << dest
+                       << "      |    " << it->second << "\n";
+                }
+            }
+        }
+    }
+
+    EV << "========================================\n\n";
+}

@@ -73,6 +73,13 @@ private:
     bool isNodeVisited(AntMsg *ant, int node);
     int getGateIndexToNeighbor(int neighborAddr);
 
+    static std::map<std::pair<int, int>, int> routingTable;  // (src, dest) -> next hop
+    void buildRoutingTable();
+    void printRoutingTable();
+    int getBestNextHop(int from, int to);
+
+    static bool iterationScheduled;  // Prevent duplicate scheduling
+
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
