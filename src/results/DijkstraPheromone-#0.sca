@@ -1,21 +1,23 @@
 version 3
-run General-0-20251023-20:40:03-4432
-attr configname General
-attr datetime 20251023-20:40:03
-attr datetimef 20251023-204003
-attr experiment General
+run DijkstraPheromone-0-20251023-23:13:12-4804
+attr configname DijkstraPheromone
+attr datetime 20251023-23:13:12
+attr datetimef 20251023-231312
+attr experiment DijkstraPheromone
 attr inifile omnetpp.ini
 attr iterationvars ""
 attr iterationvarsd ""
 attr iterationvarsf ""
 attr measurement ""
 attr network acorouting.AcoSimpleNetwork
-attr processid 4432
+attr processid 4804
 attr repetition 0
 attr replication #0
 attr resultdir results
 attr runnumber 0
 attr seedset 0
+config description "ACO with Dijkstra-like pheromone weighted routing"
+config **.router[*].routingMethod 2
 config network acorouting.AcoSimpleNetwork
 config sim-time-limit 30s
 config **.vector-recording false
@@ -27,6 +29,7 @@ config **.device[2].display-string p=700,300
 config **.device[0].connectedRouter 0
 config **.device[1].connectedRouter 3
 config **.device[2].connectedRouter 5
+config **.router[*].routingMethod 0
 
 par AcoSimpleNetwork.router[0].port$o[0].channel typename "\"ned.DatarateChannel\""
 par AcoSimpleNetwork.router[0].port$o[0].channel disabled false
@@ -316,16 +319,22 @@ par AcoSimpleNetwork.router[5].port$o[2].channel per 0
 attr mutable ""
 par AcoSimpleNetwork.router[0] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[0] address 0
+par AcoSimpleNetwork.router[0] routingMethod 2
 par AcoSimpleNetwork.router[1] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[1] address 1
+par AcoSimpleNetwork.router[1] routingMethod 2
 par AcoSimpleNetwork.router[2] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[2] address 2
+par AcoSimpleNetwork.router[2] routingMethod 2
 par AcoSimpleNetwork.router[3] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[3] address 3
+par AcoSimpleNetwork.router[3] routingMethod 2
 par AcoSimpleNetwork.router[4] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[4] address 4
+par AcoSimpleNetwork.router[4] routingMethod 2
 par AcoSimpleNetwork.router[5] typename "\"acorouting.RouterNode\""
 par AcoSimpleNetwork.router[5] address 5
+par AcoSimpleNetwork.router[5] routingMethod 2
 par AcoSimpleNetwork.device[0] typename "\"acorouting.Device\""
 par AcoSimpleNetwork.device[0] address 100
 par AcoSimpleNetwork.device[0] connectedRouter 0

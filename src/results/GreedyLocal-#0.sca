@@ -1,0 +1,348 @@
+version 3
+run GreedyLocal-0-20251023-22:17:44-12180
+attr configname GreedyLocal
+attr datetime 20251023-22:17:44
+attr datetimef 20251023-221744
+attr experiment GreedyLocal
+attr inifile omnetpp.ini
+attr iterationvars ""
+attr iterationvarsd ""
+attr iterationvarsf ""
+attr measurement ""
+attr network acorouting.AcoSimpleNetwork
+attr processid 12180
+attr repetition 0
+attr replication #0
+attr resultdir results
+attr runnumber 0
+attr seedset 0
+config description "ACO with Greedy Local routing table construction"
+config **.router[*].routingMethod 0
+config network acorouting.AcoSimpleNetwork
+config sim-time-limit 30s
+config **.vector-recording false
+config **.scalar-recording false
+config **.router[*].display-string p=,,ring
+config **.device[0].display-string p=100,300
+config **.device[1].display-string p=400,100
+config **.device[2].display-string p=700,300
+config **.device[0].connectedRouter 0
+config **.device[1].connectedRouter 3
+config **.device[2].connectedRouter 5
+config **.router[*].routingMethod 0
+
+par AcoSimpleNetwork.router[0].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[0].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[0].channel delay 0.01s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[0].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[0].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[1].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[0].channel delay 0.01s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[1].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[1].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[0].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[1].channel delay 0.015s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[0].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[0].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[2].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[0].channel delay 0.015s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[2].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[2].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[1].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[1].channel delay 0.012s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[1].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[1].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[2].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[1].channel delay 0.012s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[2].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[2].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[1].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[2].channel delay 0.02s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[1].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[1].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[1].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[3].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[0].channel delay 0.02s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[3].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[3].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[2].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[2].channel delay 0.018s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[2].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[2].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[2].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[4].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[0].channel delay 0.018s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[4].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[4].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[3].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[1].channel delay 0.01s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[3].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[3].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[4].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[1].channel delay 0.01s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[4].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[4].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[3].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[2].channel delay 0.025s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[3].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[3].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[0].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[5].port$o[0].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[0].channel delay 0.025s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[5].port$o[0].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[5].port$o[0].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[0].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[4].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[2].channel delay 0.015s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[4].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[4].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[4].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[1].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[5].port$o[1].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[1].channel delay 0.015s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[5].port$o[1].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[5].port$o[1].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[1].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.device[0].port$o.channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.device[0].port$o.channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.device[0].port$o.channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.device[0].port$o.channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.device[0].port$o.channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.device[0].port$o.channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[0].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[2].channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[0].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[0].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[0].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.device[1].port$o.channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.device[1].port$o.channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.device[1].port$o.channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.device[1].port$o.channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.device[1].port$o.channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.device[1].port$o.channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[3].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[3].port$o[3].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[3].channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[3].port$o[3].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[3].port$o[3].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[3].port$o[3].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.device[2].port$o.channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.device[2].port$o.channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.device[2].port$o.channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.device[2].port$o.channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.device[2].port$o.channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.device[2].port$o.channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[2].channel typename "\"ned.DatarateChannel\""
+par AcoSimpleNetwork.router[5].port$o[2].channel disabled false
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[2].channel delay 0.002s
+attr mutable ""
+attr unit s
+par AcoSimpleNetwork.router[5].port$o[2].channel datarate 1e+06bps
+attr mutable ""
+attr unit bps
+par AcoSimpleNetwork.router[5].port$o[2].channel ber 0
+attr mutable ""
+par AcoSimpleNetwork.router[5].port$o[2].channel per 0
+attr mutable ""
+par AcoSimpleNetwork.router[0] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[0] address 0
+par AcoSimpleNetwork.router[0] routingMethod 0
+par AcoSimpleNetwork.router[1] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[1] address 1
+par AcoSimpleNetwork.router[1] routingMethod 0
+par AcoSimpleNetwork.router[2] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[2] address 2
+par AcoSimpleNetwork.router[2] routingMethod 0
+par AcoSimpleNetwork.router[3] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[3] address 3
+par AcoSimpleNetwork.router[3] routingMethod 0
+par AcoSimpleNetwork.router[4] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[4] address 4
+par AcoSimpleNetwork.router[4] routingMethod 0
+par AcoSimpleNetwork.router[5] typename "\"acorouting.RouterNode\""
+par AcoSimpleNetwork.router[5] address 5
+par AcoSimpleNetwork.router[5] routingMethod 0
+par AcoSimpleNetwork.device[0] typename "\"acorouting.Device\""
+par AcoSimpleNetwork.device[0] address 100
+par AcoSimpleNetwork.device[0] connectedRouter 0
+par AcoSimpleNetwork.device[1] typename "\"acorouting.Device\""
+par AcoSimpleNetwork.device[1] address 101
+par AcoSimpleNetwork.device[1] connectedRouter 3
+par AcoSimpleNetwork.device[2] typename "\"acorouting.Device\""
+par AcoSimpleNetwork.device[2] address 102
+par AcoSimpleNetwork.device[2] connectedRouter 5
+par AcoSimpleNetwork typename "\"acorouting.AcoSimpleNetwork\""
+

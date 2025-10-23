@@ -18,6 +18,13 @@
 
 using namespace omnetpp;
 
+// Enum for routing table construction methods
+enum RoutingMethod {
+    GREEDY_LOCAL = 0,           // Current method (greedy, local decision)
+    MULTIHOP_PHEROMONE = 1,     // Multi-hop pheromone path analysis
+    DIJKSTRA_PHEROMONE = 2      // Dijkstra-like with pheromone weights
+};
+
 // Structure to store neighbor information
 struct NeighborInfo {
     int neighborAddress;
@@ -39,17 +46,20 @@ private:
 
     // ACO Parameters
     static std::map<std::pair<int, int>, double> pheromoneTable;
-    static const double ALPHA;  // pheromone importance
-    static const double BETA;   // heuristic importance (visibility)
-    static const double RHO;    // evaporation rate
+    static const double ALPHA;
+    static const double BETA;
+    static const double RHO;
     static const double INITIAL_PHEROMONE;
-    static const double Q;      // pheromone deposit factor
+    static const double Q;
     static const int MAX_ITERATIONS;
-    static const int NUM_ANTS;  // equal to number of routers
+    static const int NUM_ANTS;
 
     // ACO state
     static int currentIteration;
     static int antsCompleted;
+
+    // Routing method selection
+    static int routingMethod;  // Selected routing algorithm
 
     void discoverNeighbors();
     void addNeighborsToGlobalTable();
@@ -73,12 +83,17 @@ private:
     bool isNodeVisited(AntMsg *ant, int node);
     int getGateIndexToNeighbor(int neighborAddr);
 
-    static std::map<std::pair<int, int>, int> routingTable;  // (src, dest) -> next hop
+    // Routing table construction
+    static std::map<std::pair<int, int>, int> routingTable;
     void buildRoutingTable();
     void printRoutingTable();
-    int getBestNextHop(int from, int to);
 
-    static bool iterationScheduled;  // Prevent duplicate scheduling
+    // Multiple routing algorithms
+    int getBestNextHop_GreedyLocal(int from, int to);
+    int getBestNextHop_MultiHop(int from, int to);
+    int getBestNextHop_Dijkstra(int from, int to);
+
+    static bool iterationScheduled;
 
 protected:
     virtual void initialize() override;
@@ -90,3 +105,4 @@ public:
 };
 
 #endif
+

@@ -18,18 +18,17 @@ std::map<std::pair<int, int>, double> RouterNode::pheromoneTable;
 std::map<std::pair<int, int>, int> RouterNode::routingTable;
 int RouterNode::routersInitialized = 0;
 int RouterNode::totalRouters = 6;
-
-// Add with other static initializations:
 bool RouterNode::iterationScheduled = false;
+int RouterNode::routingMethod = GREEDY_LOCAL;  // Default method
 
 // ACO Parameters
-const double RouterNode::ALPHA = 1.0;  // pheromone importance
-const double RouterNode::BETA = 2.0;   // heuristic importance
-const double RouterNode::RHO = 0.1;    // evaporation rate (10%)
+const double RouterNode::ALPHA = 1.0;
+const double RouterNode::BETA = 2.0;
+const double RouterNode::RHO = 0.1;
 const double RouterNode::INITIAL_PHEROMONE = 1.0;
-const double RouterNode::Q = 100.0;    // pheromone deposit factor
+const double RouterNode::Q = 100.0;
 const int RouterNode::MAX_ITERATIONS = 5;
-const int RouterNode::NUM_ANTS = 6;    // equal to number of routers
+const int RouterNode::NUM_ANTS = 6;
 
 int RouterNode::currentIteration = 0;
 int RouterNode::antsCompleted = 0;
@@ -40,6 +39,13 @@ void RouterNode::initialize()
     numPorts = gateSize("port");
 
     EV << "Router " << address << " initialized with " << numPorts << " ports\n";
+
+    // Read routing method from configuration (only once)
+    if (address == 0) {
+        routingMethod = par("routingMethod").intValue();
+        const char* methodNames[] = {"Greedy Local", "Multi-hop Pheromone", "Dijkstra with Pheromone"};
+        EV << "\n*** ROUTING METHOD SELECTED: " << methodNames[routingMethod] << " ***\n\n";
+    }
 
     // Discover neighbors from network topology
     discoverNeighbors();
@@ -59,7 +65,7 @@ void RouterNode::initialize()
         printPheromoneTable();
     }
 
-    // Router 0 schedules ACO start (checks after all routers initialized)
+    // Router 0 schedules ACO start
     if (address == 0) {
         cMessage *startAco = new cMessage("StartACO");
         scheduleAt(simTime() + 0.5, startAco);
@@ -647,64 +653,44 @@ void RouterNode::handleMessage(cMessage *msg)
 }
 
 
-int RouterNode::getBestNextHop(int from, int to)
-{
-    // Find neighbor of 'from' with highest pheromone toward 'to'
-    double maxProbability = -1.0;
-    int bestNextHop = -1;
-
-    cModule *network = getParentModule();
-    RouterNode *fromRouter = nullptr;
-
-    // Find the router module for 'from'
-    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
-        cModule *mod = *it;
-        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
-            fromRouter = check_and_cast<RouterNode *>(mod);
-            break;
-        }
-    }
-
-    if (!fromRouter) return -1;
-
-    // Check all neighbors of 'from'
-    for (const auto &neighbor : fromRouter->neighbors) {
-        int nextNode = neighbor.neighborAddress;
-
-        // Calculate attractiveness: pheromone^alpha * visibility^beta
-        double tau = getPheromone(from, nextNode);
-        double eta = getVisibility(from, nextNode);
-        double probability = pow(tau, ALPHA) * pow(eta, BETA);
-
-        if (probability > maxProbability) {
-            maxProbability = probability;
-            bestNextHop = nextNode;
-        }
-    }
-
-    return bestNextHop;
-}
-
 void RouterNode::buildRoutingTable()
 {
+    const char* methodNames[] = {"Greedy Local", "Multi-hop Pheromone", "Dijkstra with Pheromone"};
+
     EV << "\n========================================\n";
     EV << "=== BUILDING CENTRALIZED ROUTING TABLE ===\n";
+    EV << "=== METHOD: " << methodNames[routingMethod] << " ===\n";
     EV << "========================================\n\n";
 
     routingTable.clear();
 
-    // For each router pair, determine best next hop based on pheromones
+    // For each router pair, determine best next hop
     for (int src = 0; src < totalRouters; src++) {
         for (int dest = 0; dest < totalRouters; dest++) {
             if (src != dest) {
-                int nextHop = getBestNextHop(src, dest);
+                int nextHop = -1;
+
+                // Call the selected routing method
+                switch (routingMethod) {
+                    case GREEDY_LOCAL:
+                        nextHop = getBestNextHop_GreedyLocal(src, dest);
+                        break;
+                    case MULTIHOP_PHEROMONE:
+                        nextHop = getBestNextHop_MultiHop(src, dest);
+                        break;
+                    case DIJKSTRA_PHEROMONE:
+                        nextHop = getBestNextHop_Dijkstra(src, dest);
+                        break;
+                }
 
                 if (nextHop != -1) {
                     std::pair<int, int> route(src, dest);
                     routingTable[route] = nextHop;
 
+                    double pheromone = getPheromone(src, nextHop);
                     EV << "Route: " << src << " -> " << dest
-                       << " | Next hop: " << nextHop << "\n";
+                       << " | Next hop: " << nextHop
+                       << " (pheromone: " << pheromone << ")\n";
                 }
             }
         }
@@ -737,4 +723,142 @@ void RouterNode::printRoutingTable()
     }
 
     EV << "========================================\n\n";
+}
+
+
+// NEW: Method 1 - Greedy Local (your current implementation)
+int RouterNode::getBestNextHop_GreedyLocal(int from, int to)
+{
+    cModule *network = getParentModule();
+    RouterNode *fromRouter = nullptr;
+
+    // Find the router module for 'from'
+    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+        cModule *mod = *it;
+        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
+            fromRouter = check_and_cast<RouterNode *>(mod);
+            break;
+        }
+    }
+
+    if (!fromRouter) return -1;
+
+    double maxProbability = -1.0;
+    int bestNextHop = -1;
+
+    // Check all neighbors - pure greedy based on immediate link
+    for (const auto &neighbor : fromRouter->neighbors) {
+        int nextNode = neighbor.neighborAddress;
+
+        double tau = getPheromone(from, nextNode);
+        double eta = getVisibility(from, nextNode);
+        double probability = pow(tau, ALPHA) * pow(eta, BETA);
+
+        if (probability > maxProbability) {
+            maxProbability = probability;
+            bestNextHop = nextNode;
+        }
+    }
+
+    return bestNextHop;
+}
+
+// NEW: Method 2 - Multi-hop Pheromone Analysis
+int RouterNode::getBestNextHop_MultiHop(int from, int to)
+{
+    cModule *network = getParentModule();
+    RouterNode *fromRouter = nullptr;
+
+    // Find the router module for 'from'
+    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+        cModule *mod = *it;
+        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
+            fromRouter = check_and_cast<RouterNode *>(mod);
+            break;
+        }
+    }
+
+    if (!fromRouter) return -1;
+
+    // Check if 'to' is a direct neighbor - always prefer direct
+    for (const auto &neighbor : fromRouter->neighbors) {
+        if (neighbor.neighborAddress == to) {
+            return to;  // Direct connection is optimal!
+        }
+    }
+
+    // Multi-hop: consider pheromone path through intermediate nodes
+    double maxPathQuality = -1.0;
+    int bestNextHop = -1;
+
+    for (const auto &neighbor : fromRouter->neighbors) {
+        int nextNode = neighbor.neighborAddress;
+
+        // First hop quality
+        double tau_first = getPheromone(from, nextNode);
+        double eta_first = getVisibility(from, nextNode);
+
+        // Second hop pheromone (from next node toward destination)
+        double tau_second = getPheromone(nextNode, to);
+
+        // Combined path quality
+        double pathQuality = pow(tau_first, ALPHA) * pow(eta_first, BETA) * tau_second;
+
+        if (pathQuality > maxPathQuality) {
+            maxPathQuality = pathQuality;
+            bestNextHop = nextNode;
+        }
+    }
+
+    return bestNextHop;
+}
+
+// NEW: Method 3 - Dijkstra-like with Pheromone Weights
+int RouterNode::getBestNextHop_Dijkstra(int from, int to)
+{
+    cModule *network = getParentModule();
+    RouterNode *fromRouter = nullptr;
+
+    // Find the router module for 'from'
+    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+        cModule *mod = *it;
+        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
+            fromRouter = check_and_cast<RouterNode *>(mod);
+            break;
+        }
+    }
+
+    if (!fromRouter) return -1;
+
+    // Check direct connection first
+    for (const auto &neighbor : fromRouter->neighbors) {
+        if (neighbor.neighborAddress == to) {
+            return to;
+        }
+    }
+
+    // Weighted scoring: immediate link + downstream path potential
+    double bestScore = -1.0;
+    int bestNextHop = -1;
+
+    for (const auto &neighbor : fromRouter->neighbors) {
+        int nextNode = neighbor.neighborAddress;
+
+        // Immediate link quality
+        double tau = getPheromone(from, nextNode);
+        double eta = getVisibility(from, nextNode);
+
+        // Downstream potential (pheromone from next node to destination)
+        double tau_to_dest = getPheromone(nextNode, to);
+
+        // Combined score with strong weight on downstream path
+        double score = pow(tau, ALPHA) * pow(eta, BETA) * (1.0 + tau_to_dest * 10.0);
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestNextHop = nextNode;
+        }
+    }
+
+    return bestNextHop;
 }
