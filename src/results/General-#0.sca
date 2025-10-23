@@ -1,23 +1,21 @@
 version 3
-run GreedyLocal-0-20251024-04:01:53-7640
-attr configname GreedyLocal
-attr datetime 20251024-04:01:53
-attr datetimef 20251024-040153
-attr experiment GreedyLocal
+run General-0-20251024-03:45:07-9980
+attr configname General
+attr datetime 20251024-03:45:07
+attr datetimef 20251024-034507
+attr experiment General
 attr inifile omnetpp.ini
 attr iterationvars ""
 attr iterationvarsd ""
 attr iterationvarsf ""
 attr measurement ""
 attr network acorouting.AcoSimpleNetwork
-attr processid 7640
+attr processid 9980
 attr repetition 0
 attr replication #0
 attr resultdir results
 attr runnumber 0
 attr seedset 0
-config description "ACO with Greedy Local routing table construction"
-config **.router[*].routingMethod 0
 config network acorouting.AcoSimpleNetwork
 config sim-time-limit 30s
 config **.vector-recording false

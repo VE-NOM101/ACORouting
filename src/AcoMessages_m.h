@@ -28,6 +28,7 @@ class AntMsg;
  *     int destAddress;
  *     int hopCount = 0;
  *     string payload;
+ *     int visitedRouters[];  // Track visited routers to prevent loops
  * }
  * </pre>
  */
@@ -38,6 +39,8 @@ class DataMsg : public ::omnetpp::cPacket
     int destAddress = 0;
     int hopCount = 0;
     omnetpp::opp_string payload;
+    int *visitedRouters = nullptr;
+    size_t visitedRouters_arraysize = 0;
 
   private:
     void copy(const DataMsg& other);
@@ -65,13 +68,22 @@ class DataMsg : public ::omnetpp::cPacket
 
     virtual const char * getPayload() const;
     virtual void setPayload(const char * payload);
+
+    virtual void setVisitedRoutersArraySize(size_t size);
+    virtual size_t getVisitedRoutersArraySize() const;
+    virtual int getVisitedRouters(size_t k) const;
+    virtual void setVisitedRouters(size_t k, int visitedRouters);
+    virtual void insertVisitedRouters(size_t k, int visitedRouters);
+    [[deprecated]] void insertVisitedRouters(int visitedRouters) {appendVisitedRouters(visitedRouters);}
+    virtual void appendVisitedRouters(int visitedRouters);
+    virtual void eraseVisitedRouters(size_t k);
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const DataMsg& obj) {obj.parsimPack(b);}
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, DataMsg& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>AcoMessages.msg:13</tt> by opp_msgtool.
+ * Class generated from <tt>AcoMessages.msg:14</tt> by opp_msgtool.
  * <pre>
  * // Ant packet for ACO algorithm
  * packet AntMsg

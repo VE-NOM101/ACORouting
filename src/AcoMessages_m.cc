@@ -163,6 +163,7 @@ DataMsg::DataMsg(const DataMsg& other) : ::omnetpp::cPacket(other)
 
 DataMsg::~DataMsg()
 {
+    delete [] this->visitedRouters;
 }
 
 DataMsg& DataMsg::operator=(const DataMsg& other)
@@ -179,6 +180,12 @@ void DataMsg::copy(const DataMsg& other)
     this->destAddress = other.destAddress;
     this->hopCount = other.hopCount;
     this->payload = other.payload;
+    delete [] this->visitedRouters;
+    this->visitedRouters = (other.visitedRouters_arraysize==0) ? nullptr : new int[other.visitedRouters_arraysize];
+    visitedRouters_arraysize = other.visitedRouters_arraysize;
+    for (size_t i = 0; i < visitedRouters_arraysize; i++) {
+        this->visitedRouters[i] = other.visitedRouters[i];
+    }
 }
 
 void DataMsg::parsimPack(omnetpp::cCommBuffer *b) const
@@ -188,6 +195,8 @@ void DataMsg::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->destAddress);
     doParsimPacking(b,this->hopCount);
     doParsimPacking(b,this->payload);
+    b->pack(visitedRouters_arraysize);
+    doParsimArrayPacking(b,this->visitedRouters,visitedRouters_arraysize);
 }
 
 void DataMsg::parsimUnpack(omnetpp::cCommBuffer *b)
@@ -197,6 +206,14 @@ void DataMsg::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->destAddress);
     doParsimUnpacking(b,this->hopCount);
     doParsimUnpacking(b,this->payload);
+    delete [] this->visitedRouters;
+    b->unpack(visitedRouters_arraysize);
+    if (visitedRouters_arraysize == 0) {
+        this->visitedRouters = nullptr;
+    } else {
+        this->visitedRouters = new int[visitedRouters_arraysize];
+        doParsimArrayUnpacking(b,this->visitedRouters,visitedRouters_arraysize);
+    }
 }
 
 int DataMsg::getSrcAddress() const
@@ -239,6 +256,72 @@ void DataMsg::setPayload(const char * payload)
     this->payload = payload;
 }
 
+size_t DataMsg::getVisitedRoutersArraySize() const
+{
+    return visitedRouters_arraysize;
+}
+
+int DataMsg::getVisitedRouters(size_t k) const
+{
+    if (k >= visitedRouters_arraysize) throw omnetpp::cRuntimeError("Array of size %lu indexed by %lu", (unsigned long)visitedRouters_arraysize, (unsigned long)k);
+    return this->visitedRouters[k];
+}
+
+void DataMsg::setVisitedRoutersArraySize(size_t newSize)
+{
+    int *visitedRouters2 = (newSize==0) ? nullptr : new int[newSize];
+    size_t minSize = visitedRouters_arraysize < newSize ? visitedRouters_arraysize : newSize;
+    for (size_t i = 0; i < minSize; i++)
+        visitedRouters2[i] = this->visitedRouters[i];
+    for (size_t i = minSize; i < newSize; i++)
+        visitedRouters2[i] = 0;
+    delete [] this->visitedRouters;
+    this->visitedRouters = visitedRouters2;
+    visitedRouters_arraysize = newSize;
+}
+
+void DataMsg::setVisitedRouters(size_t k, int visitedRouters)
+{
+    if (k >= visitedRouters_arraysize) throw omnetpp::cRuntimeError("Array of size %lu indexed by %lu", (unsigned long)visitedRouters_arraysize, (unsigned long)k);
+    this->visitedRouters[k] = visitedRouters;
+}
+
+void DataMsg::insertVisitedRouters(size_t k, int visitedRouters)
+{
+    if (k > visitedRouters_arraysize) throw omnetpp::cRuntimeError("Array of size %lu indexed by %lu", (unsigned long)visitedRouters_arraysize, (unsigned long)k);
+    size_t newSize = visitedRouters_arraysize + 1;
+    int *visitedRouters2 = new int[newSize];
+    size_t i;
+    for (i = 0; i < k; i++)
+        visitedRouters2[i] = this->visitedRouters[i];
+    visitedRouters2[k] = visitedRouters;
+    for (i = k + 1; i < newSize; i++)
+        visitedRouters2[i] = this->visitedRouters[i-1];
+    delete [] this->visitedRouters;
+    this->visitedRouters = visitedRouters2;
+    visitedRouters_arraysize = newSize;
+}
+
+void DataMsg::appendVisitedRouters(int visitedRouters)
+{
+    insertVisitedRouters(visitedRouters_arraysize, visitedRouters);
+}
+
+void DataMsg::eraseVisitedRouters(size_t k)
+{
+    if (k >= visitedRouters_arraysize) throw omnetpp::cRuntimeError("Array of size %lu indexed by %lu", (unsigned long)visitedRouters_arraysize, (unsigned long)k);
+    size_t newSize = visitedRouters_arraysize - 1;
+    int *visitedRouters2 = (newSize == 0) ? nullptr : new int[newSize];
+    size_t i;
+    for (i = 0; i < k; i++)
+        visitedRouters2[i] = this->visitedRouters[i];
+    for (i = k; i < newSize; i++)
+        visitedRouters2[i] = this->visitedRouters[i+1];
+    delete [] this->visitedRouters;
+    this->visitedRouters = visitedRouters2;
+    visitedRouters_arraysize = newSize;
+}
+
 class DataMsgDescriptor : public omnetpp::cClassDescriptor
 {
   private:
@@ -248,6 +331,7 @@ class DataMsgDescriptor : public omnetpp::cClassDescriptor
         FIELD_destAddress,
         FIELD_hopCount,
         FIELD_payload,
+        FIELD_visitedRouters,
     };
   public:
     DataMsgDescriptor();
@@ -314,7 +398,7 @@ const char *DataMsgDescriptor::getProperty(const char *propertyName) const
 int DataMsgDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *base = getBaseClassDescriptor();
-    return base ? 4+base->getFieldCount() : 4;
+    return base ? 5+base->getFieldCount() : 5;
 }
 
 unsigned int DataMsgDescriptor::getFieldTypeFlags(int field) const
@@ -330,8 +414,9 @@ unsigned int DataMsgDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,    // FIELD_destAddress
         FD_ISEDITABLE,    // FIELD_hopCount
         FD_ISEDITABLE,    // FIELD_payload
+        FD_ISARRAY | FD_ISEDITABLE | FD_ISRESIZABLE,    // FIELD_visitedRouters
     };
-    return (field >= 0 && field < 4) ? fieldTypeFlags[field] : 0;
+    return (field >= 0 && field < 5) ? fieldTypeFlags[field] : 0;
 }
 
 const char *DataMsgDescriptor::getFieldName(int field) const
@@ -347,8 +432,9 @@ const char *DataMsgDescriptor::getFieldName(int field) const
         "destAddress",
         "hopCount",
         "payload",
+        "visitedRouters",
     };
-    return (field >= 0 && field < 4) ? fieldNames[field] : nullptr;
+    return (field >= 0 && field < 5) ? fieldNames[field] : nullptr;
 }
 
 int DataMsgDescriptor::findField(const char *fieldName) const
@@ -359,6 +445,7 @@ int DataMsgDescriptor::findField(const char *fieldName) const
     if (strcmp(fieldName, "destAddress") == 0) return baseIndex + 1;
     if (strcmp(fieldName, "hopCount") == 0) return baseIndex + 2;
     if (strcmp(fieldName, "payload") == 0) return baseIndex + 3;
+    if (strcmp(fieldName, "visitedRouters") == 0) return baseIndex + 4;
     return base ? base->findField(fieldName) : -1;
 }
 
@@ -375,8 +462,9 @@ const char *DataMsgDescriptor::getFieldTypeString(int field) const
         "int",    // FIELD_destAddress
         "int",    // FIELD_hopCount
         "string",    // FIELD_payload
+        "int",    // FIELD_visitedRouters
     };
-    return (field >= 0 && field < 4) ? fieldTypeStrings[field] : nullptr;
+    return (field >= 0 && field < 5) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **DataMsgDescriptor::getFieldPropertyNames(int field) const
@@ -415,6 +503,7 @@ int DataMsgDescriptor::getFieldArraySize(omnetpp::any_ptr object, int field) con
     }
     DataMsg *pp = omnetpp::fromAnyPtr<DataMsg>(object); (void)pp;
     switch (field) {
+        case FIELD_visitedRouters: return pp->getVisitedRoutersArraySize();
         default: return 0;
     }
 }
@@ -431,6 +520,7 @@ void DataMsgDescriptor::setFieldArraySize(omnetpp::any_ptr object, int field, in
     }
     DataMsg *pp = omnetpp::fromAnyPtr<DataMsg>(object); (void)pp;
     switch (field) {
+        case FIELD_visitedRouters: pp->setVisitedRoutersArraySize(size); break;
         default: throw omnetpp::cRuntimeError("Cannot set array size of field %d of class 'DataMsg'", field);
     }
 }
@@ -463,6 +553,7 @@ std::string DataMsgDescriptor::getFieldValueAsString(omnetpp::any_ptr object, in
         case FIELD_destAddress: return long2string(pp->getDestAddress());
         case FIELD_hopCount: return long2string(pp->getHopCount());
         case FIELD_payload: return oppstring2string(pp->getPayload());
+        case FIELD_visitedRouters: return long2string(pp->getVisitedRouters(i));
         default: return "";
     }
 }
@@ -483,6 +574,7 @@ void DataMsgDescriptor::setFieldValueAsString(omnetpp::any_ptr object, int field
         case FIELD_destAddress: pp->setDestAddress(string2long(value)); break;
         case FIELD_hopCount: pp->setHopCount(string2long(value)); break;
         case FIELD_payload: pp->setPayload((value)); break;
+        case FIELD_visitedRouters: pp->setVisitedRouters(i,string2long(value)); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'DataMsg'", field);
     }
 }
@@ -501,6 +593,7 @@ omnetpp::cValue DataMsgDescriptor::getFieldValue(omnetpp::any_ptr object, int fi
         case FIELD_destAddress: return pp->getDestAddress();
         case FIELD_hopCount: return pp->getHopCount();
         case FIELD_payload: return pp->getPayload();
+        case FIELD_visitedRouters: return pp->getVisitedRouters(i);
         default: throw omnetpp::cRuntimeError("Cannot return field %d of class 'DataMsg' as cValue -- field index out of range?", field);
     }
 }
@@ -521,6 +614,7 @@ void DataMsgDescriptor::setFieldValue(omnetpp::any_ptr object, int field, int i,
         case FIELD_destAddress: pp->setDestAddress(omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_hopCount: pp->setHopCount(omnetpp::checked_int_cast<int>(value.intValue())); break;
         case FIELD_payload: pp->setPayload(value.stringValue()); break;
+        case FIELD_visitedRouters: pp->setVisitedRouters(i,omnetpp::checked_int_cast<int>(value.intValue())); break;
         default: throw omnetpp::cRuntimeError("Cannot set field %d of class 'DataMsg'", field);
     }
 }

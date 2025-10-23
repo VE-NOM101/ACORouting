@@ -643,14 +643,18 @@ void RouterNode::handleMessage(cMessage *msg)
         } else {
             handleBackwardAnt(ant);
         }
-    } else if (strcmp(msg->getName(), "StartACO") == 0) {  // ADD THIS LINE
-        startAcoAlgorithm();  // ADD THIS LINE
-        delete msg;  // ADD THIS LINE
+    } else if (DataMsg *dataMsg = dynamic_cast<DataMsg*>(msg)) {
+        // Handle data packet forwarding
+        forwardDataPacket(dataMsg);
+    } else if (strcmp(msg->getName(), "StartACO") == 0) {
+        startAcoAlgorithm();
+        delete msg;
     } else {
         EV << "Router " << address << " received message: " << msg->getName() << "\n";
         delete msg;
     }
 }
+
 
 
 void RouterNode::buildRoutingTable()
@@ -861,4 +865,210 @@ int RouterNode::getBestNextHop_Dijkstra(int from, int to)
     }
 
     return bestNextHop;
+}
+
+
+int RouterNode::getRouterForDevice(int deviceAddress)
+{
+    // Device-to-Router mapping
+    if (deviceAddress == 100) return 0;  // Device 100 → Router 0
+    if (deviceAddress == 101) return 3;  // Device 101 → Router 3
+    if (deviceAddress == 102) return 5;  // Device 102 → Router 5
+    return -1;
+}
+
+void RouterNode::forwardDataPacket(DataMsg *dataMsg)
+{
+    int srcDevice = dataMsg->getSrcAddress();
+    int destDevice = dataMsg->getDestAddress();
+    int hopCount = dataMsg->getHopCount();
+
+    // Path tracking for visited routers
+    int newSize = dataMsg->getVisitedRoutersArraySize() + 1;
+    dataMsg->setVisitedRoutersArraySize(newSize);
+    dataMsg->setVisitedRouters(newSize - 1, address);
+
+    EV << "\n┌─────────────────────────────────────┐\n";
+    EV << "│ Router " << address << " Processing packet      │\n";
+    EV << "└─────────────────────────────────────┘\n";
+    EV << "Path: ";
+    for (unsigned int i = 0; i < dataMsg->getVisitedRoutersArraySize(); i++) {
+        if (i > 0) EV << " → ";
+        EV << "R" << dataMsg->getVisitedRouters(i);
+    }
+    EV << "\n";
+
+    // TTL protection
+    if (hopCount > 15) {
+        EV << "✗ TTL EXCEEDED (>15 hops)! Dropping packet.\n\n";
+        delete dataMsg;
+        return;
+    }
+
+    // Get destination router
+    int destRouter = getRouterForDevice(destDevice);
+    if (destRouter == -1) {
+        EV << "✗ Unknown destination device: " << destDevice << "\n\n";
+        delete dataMsg;
+        return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Check if DESTINATION REACHED
+    // ═══════════════════════════════════════════════════════
+    if (address == destRouter) {
+        // Deliver locally to device
+        for (int i = 0; i < numPorts; i++) {
+            cGate *outGate = gate("port$o", i);
+            if (outGate->isConnected()) {
+                cModule *neighbor = outGate->getPathEndGate()->getOwnerModule();
+                if (strcmp(neighbor->getName(), "device") == 0 &&
+                    neighbor->par("address").intValue() == destDevice) {
+                    EV << "✓ Destination reached! Delivering to Device " << destDevice << "\n\n";
+                    send(dataMsg, "port$o", i);
+                    return;
+                }
+            }
+        }
+        EV << "✗ ERROR: Device " << destDevice << " not found on this router!\n\n";
+        delete dataMsg;
+        return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Get ALL UNVISITED NEIGHBORS (not in visited path)
+    // ═══════════════════════════════════════════════════════
+    struct NeighborRanking {
+        int routerAddress;
+        double pheromoneQuality;
+        int gateIndex;
+    };
+
+    std::vector<NeighborRanking> unvisitedNeighborsRanked;
+
+    for (const auto& neighbor : neighbors) {
+        // Check if already visited
+        bool alreadyVisited = false;
+        for (unsigned int i = 0; i < dataMsg->getVisitedRoutersArraySize(); i++) {
+            if (dataMsg->getVisitedRouters(i) == neighbor.neighborAddress) {
+                alreadyVisited = true;
+                break;
+            }
+        }
+
+        if (!alreadyVisited) {
+            // Calculate pheromone quality for this neighbor
+            double tau = getPheromone(address, neighbor.neighborAddress);
+            double eta = getVisibility(address, neighbor.neighborAddress);
+            double quality = pow(tau, ALPHA) * pow(eta, BETA);
+
+            NeighborRanking nr;
+            nr.routerAddress = neighbor.neighborAddress;
+            nr.pheromoneQuality = quality;
+            nr.gateIndex = neighbor.gateIndex;
+
+            unvisitedNeighborsRanked.push_back(nr);
+
+            EV << "  Unvisited neighbor: R" << neighbor.neighborAddress
+               << " | Pheromone: " << tau << " | Quality: " << quality << "\n";
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SORT NEIGHBORS BY PHEROMONE QUALITY (BEST FIRST)
+    // ═══════════════════════════════════════════════════════
+    std::sort(unvisitedNeighborsRanked.begin(), unvisitedNeighborsRanked.end(),
+        [](const NeighborRanking& a, const NeighborRanking& b) {
+            return a.pheromoneQuality > b.pheromoneQuality;  // Descending order
+        });
+
+    // ═══════════════════════════════════════════════════════
+    // If NO UNVISITED NEIGHBORS: BACKTRACK
+    // ═══════════════════════════════════════════════════════
+    if (unvisitedNeighborsRanked.empty()) {
+        EV << "✗ No more unvisited neighbors at Router " << address << "\n";
+
+        // If source router has no way forward
+        if (dataMsg->getVisitedRoutersArraySize() == 1) {
+            EV << "✗✗✗ NO PATH AVAILABLE ✗✗✗\n";
+            EV << "Source Router " << address << " cannot reach Device " << destDevice << "\n\n";
+            delete dataMsg;
+            return;
+        }
+
+        // Backtrack to previous router
+        int prevRouter = dataMsg->getVisitedRouters(dataMsg->getVisitedRoutersArraySize() - 2);
+        EV << "→ Backtracking to previous router: R" << prevRouter << "\n";
+        EV << "  Will try NEXT BEST unvisited neighbor there.\n\n";
+
+        // Remove this router from path
+        dataMsg->setVisitedRoutersArraySize(dataMsg->getVisitedRoutersArraySize() - 1);
+
+        // Send back to previous router
+        cModule *network = getParentModule();
+        for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+            cModule *mod = *it;
+            if (strcmp(mod->getName(), "router") == 0 &&
+                mod->par("address").intValue() == prevRouter) {
+                sendDirect(dataMsg, 0.01, 0.0, mod, "directIn");
+                return;
+            }
+        }
+        delete dataMsg;
+        return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // TRY NEIGHBORS IN ORDER OF QUALITY (BEST FIRST)
+    // ═══════════════════════════════════════════════════════
+    for (const auto& neighborRanked : unvisitedNeighborsRanked) {
+        int nextHop = neighborRanked.routerAddress;
+
+        EV << "→ Trying neighbor R" << nextHop
+           << " | Quality: " << neighborRanked.pheromoneQuality << "\n";
+
+        // If this neighbor IS the destination router, forward directly
+        if (nextHop == destRouter) {
+            dataMsg->setHopCount(hopCount + 1);
+            EV << "✓ Next hop is DESTINATION ROUTER! Forwarding directly.\n\n";
+            send(dataMsg, "port$o", neighborRanked.gateIndex);
+            return;
+        }
+
+        // Check if this neighbor is in routing table for destination
+        std::pair<int, int> route(address, destRouter);
+        auto it = routingTable.find(route);
+
+        if (it != routingTable.end() && it->second == nextHop) {
+            // This is the routing table's choice
+            dataMsg->setHopCount(hopCount + 1);
+            EV << "✓ Routing table recommends R" << nextHop << "\n\n";
+            send(dataMsg, "port$o", neighborRanked.gateIndex);
+            return;
+        }
+
+        // Otherwise, this neighbor is an exploration candidate
+        // We'll forward to the BEST RANKED unvisited neighbor
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // If no neighbor matched routing table, forward to BEST RANKED neighbor
+    // ═══════════════════════════════════════════════════════
+    if (!unvisitedNeighborsRanked.empty()) {
+        const auto& bestNeighbor = unvisitedNeighborsRanked[0];  // First is best
+        dataMsg->setHopCount(hopCount + 1);
+
+        EV << "→ No routing table match. Forwarding to BEST neighbor:\n";
+        EV << "  R" << bestNeighbor.routerAddress
+           << " (Quality: " << bestNeighbor.pheromoneQuality << ")\n\n";
+
+        send(dataMsg, "port$o", bestNeighbor.gateIndex);
+        return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // FALLBACK: Should not reach here, but just in case
+    // ═══════════════════════════════════════════════════════
+    EV << "✗ No valid path forward! Dropping packet.\n\n";
+    delete dataMsg;
 }

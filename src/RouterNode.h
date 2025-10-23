@@ -93,6 +93,11 @@ private:
     int getBestNextHop_MultiHop(int from, int to);
     int getBestNextHop_Dijkstra(int from, int to);
 
+    // Data packet forwarding
+    void forwardDataPacket(DataMsg *dataMsg);
+    int getRouterForDevice(int deviceAddress);
+
+
     static bool iterationScheduled;
 
 protected:

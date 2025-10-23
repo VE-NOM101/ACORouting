@@ -7,6 +7,7 @@ packet DataMsg {
     int destAddress;
     int hopCount = 0;
     string payload;
+    int visitedRouters[];  // Track visited routers to prevent loops
 }
 
 // Ant packet for ACO algorithm
