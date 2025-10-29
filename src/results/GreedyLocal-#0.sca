@@ -1,8 +1,8 @@
 version 3
-run GreedyLocal-0-20251024-04:01:53-7640
+run GreedyLocal-0-20251029-19:10:04-11536
 attr configname GreedyLocal
-attr datetime 20251024-04:01:53
-attr datetimef 20251024-040153
+attr datetime 20251029-19:10:04
+attr datetimef 20251029-191004
 attr experiment GreedyLocal
 attr inifile omnetpp.ini
 attr iterationvars ""
@@ -10,7 +10,7 @@ attr iterationvarsd ""
 attr iterationvarsf ""
 attr measurement ""
 attr network acorouting.AcoSimpleNetwork
-attr processid 7640
+attr processid 11536
 attr repetition 0
 attr replication #0
 attr resultdir results

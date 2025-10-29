@@ -17,7 +17,9 @@ std::map<std::pair<int, int>, double> RouterNode::globalCostTable;
 std::map<std::pair<int, int>, double> RouterNode::pheromoneTable;
 std::map<std::pair<int, int>, int> RouterNode::routingTable;
 int RouterNode::routersInitialized = 0;
-int RouterNode::totalRouters = 6;
+
+int RouterNode::totalRouters = 0;  // Will be set dynamically
+
 bool RouterNode::iterationScheduled = false;
 int RouterNode::routingMethod = GREEDY_LOCAL;  // Default method
 
@@ -28,7 +30,7 @@ const double RouterNode::RHO = 0.1;
 const double RouterNode::INITIAL_PHEROMONE = 1.0;
 const double RouterNode::Q = 100.0;
 const int RouterNode::MAX_ITERATIONS = 5;
-const int RouterNode::NUM_ANTS = 6;
+int RouterNode::NUM_ANTS = 0;  // Will be set dynamically
 
 int RouterNode::currentIteration = 0;
 int RouterNode::antsCompleted = 0;
@@ -37,6 +39,41 @@ void RouterNode::initialize()
 {
     address = par("address");
     numPorts = gateSize("port");
+
+
+    // ═══════════════════════════════════════════════════════
+      // RESET ALL STATIC VARIABLES ON FIRST ROUTER (address==0)
+      // ═══════════════════════════════════════════════════════
+      if (address == 0 && routersInitialized > 0) {
+          // This is a RESTART - clear everything!
+          EV << "*** RESETTING STATIC STATE FROM PREVIOUS RUN ***\n";
+          globalCostTable.clear();
+          pheromoneTable.clear();
+          routingTable.clear();
+          routersInitialized = 0;
+          totalRouters = 0;
+          NUM_ANTS = 0;
+          currentIteration = 0;
+          antsCompleted = 0;
+          iterationScheduled = false;
+      }
+
+      // Dynamically detect how many routers in the network
+      if (totalRouters == 0) {
+          cModule *network = getParentModule();
+          int count = 0;
+          for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+              if (strcmp((*it)->getName(), "router") == 0) {
+                  count++;
+              }
+          }
+          totalRouters = count;
+          NUM_ANTS = totalRouters;
+          EV << "Network detected: " << totalRouters << " routers\n";
+          EV << "NUM_ANTS set to: " << NUM_ANTS << "\n";
+      }
+
+
 
     EV << "Router " << address << " initialized with " << numPorts << " ports\n";
 
@@ -72,6 +109,26 @@ void RouterNode::initialize()
         EV << "\n*** Router 0: Scheduled ACO to start at t=0.5s ***\n\n";
     }
 }
+
+// Add this NEW function after initialize()
+void RouterNode::finish()
+{
+    // Reset ALL static variables when simulation ends
+    if (address == 0) {
+        globalCostTable.clear();
+        pheromoneTable.clear();
+        routingTable.clear();
+        routersInitialized = 0;
+        totalRouters = 0;
+        NUM_ANTS = 0;
+        currentIteration = 0;
+        antsCompleted = 0;
+        iterationScheduled = false;
+
+        EV << "Static variables reset for next simulation\n";
+    }
+}
+
 
 void RouterNode::discoverNeighbors()
 {
@@ -166,7 +223,7 @@ void RouterNode::printGlobalCostTable()
 void RouterNode::printPheromoneTable()
 {
     EV << "\n========================================\n";
-    EV << "=== PHEROMONE TABLE (INITIAL) ===\n";
+    EV << "=== PHEROMONE TABLE===\n";
     EV << "========================================\n";
     EV << "Link (i->j) | Pheromone | Visibility\n";
     EV << "----------------------------------------\n";
@@ -207,11 +264,10 @@ void RouterNode::startAcoAlgorithm()
 
 void RouterNode::launchAnts()
 {
-    if (address != 0) return;  // Only router 0 launches ants
+    if (address != 0) return;
 
     EV << "Launching " << NUM_ANTS << " ants (one from each router)...\n\n";
 
-    // Launch one ant from each router to explore paths
     cModule *network = getParentModule();
     int antId = 0;
 
@@ -221,9 +277,15 @@ void RouterNode::launchAnts()
             RouterNode *router = check_and_cast<RouterNode *>(mod);
             int srcRouter = router->address;
 
-            // For simplicity, each ant explores to a different destination
-            // Ant from router i goes to router (i+3) % totalRouters
-            int destRouter = (srcRouter + 3) % totalRouters;
+            // Smart destination mapping that works for both 3 and 6 router networks
+            int destRouter;
+            if (totalRouters == 3) {
+                // For 3 routers: 0→1, 1→2, 2→0 (circular)
+                destRouter = (srcRouter + 1) % totalRouters;
+            } else {
+                // For 6 routers: use diagonal routing (0→3, 1→4, 2→5, 3→0, etc.)
+                destRouter = (srcRouter + totalRouters/2) % totalRouters;
+            }
 
             if (srcRouter != destRouter) {
                 AntMsg *ant = new AntMsg();
@@ -251,6 +313,7 @@ void RouterNode::launchAnts()
         }
     }
 }
+
 
 int RouterNode::getGateIndexToNeighbor(int neighborAddr)
 {
@@ -616,6 +679,7 @@ void RouterNode::evaporatePheromones()
     }
 
     EV << "Pheromone evaporation complete.\n\n";
+    printPheromoneTable();
 }
 
 double RouterNode::getLinkCost(int nodeA, int nodeB)
@@ -678,9 +742,6 @@ void RouterNode::buildRoutingTable()
                 switch (routingMethod) {
                     case GREEDY_LOCAL:
                         nextHop = getBestNextHop_GreedyLocal(src, dest);
-                        break;
-                    case MULTIHOP_PHEROMONE:
-                        nextHop = getBestNextHop_MultiHop(src, dest);
                         break;
                     case DIJKSTRA_PHEROMONE:
                         nextHop = getBestNextHop_Dijkstra(src, dest);
@@ -767,113 +828,111 @@ int RouterNode::getBestNextHop_GreedyLocal(int from, int to)
     return bestNextHop;
 }
 
-// NEW: Method 2 - Multi-hop Pheromone Analysis
-int RouterNode::getBestNextHop_MultiHop(int from, int to)
-{
-    cModule *network = getParentModule();
-    RouterNode *fromRouter = nullptr;
-
-    // Find the router module for 'from'
-    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
-        cModule *mod = *it;
-        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
-            fromRouter = check_and_cast<RouterNode *>(mod);
-            break;
-        }
-    }
-
-    if (!fromRouter) return -1;
-
-    // Check if 'to' is a direct neighbor - always prefer direct
-    for (const auto &neighbor : fromRouter->neighbors) {
-        if (neighbor.neighborAddress == to) {
-            return to;  // Direct connection is optimal!
-        }
-    }
-
-    // Multi-hop: consider pheromone path through intermediate nodes
-    double maxPathQuality = -1.0;
-    int bestNextHop = -1;
-
-    for (const auto &neighbor : fromRouter->neighbors) {
-        int nextNode = neighbor.neighborAddress;
-
-        // First hop quality
-        double tau_first = getPheromone(from, nextNode);
-        double eta_first = getVisibility(from, nextNode);
-
-        // Second hop pheromone (from next node toward destination)
-        double tau_second = getPheromone(nextNode, to);
-
-        // Combined path quality
-        double pathQuality = pow(tau_first, ALPHA) * pow(eta_first, BETA) * tau_second;
-
-        if (pathQuality > maxPathQuality) {
-            maxPathQuality = pathQuality;
-            bestNextHop = nextNode;
-        }
-    }
-
-    return bestNextHop;
-}
-
-// NEW: Method 3 - Dijkstra-like with Pheromone Weights
+// Method 3 - CORRECTED Dijkstra with Pheromone (OPTIMAL!)
 int RouterNode::getBestNextHop_Dijkstra(int from, int to)
 {
-    cModule *network = getParentModule();
-    RouterNode *fromRouter = nullptr;
+    std::map<int, double> minCost;
+    std::map<int, int> prevRouter;
+    std::set<int> visited;
 
-    // Find the router module for 'from'
-    for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
-        cModule *mod = *it;
-        if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == from) {
-            fromRouter = check_and_cast<RouterNode *>(mod);
-            break;
+    for (int i = 0; i < totalRouters; i++) {
+        minCost[i] = 1e9;
+    }
+    minCost[from] = 0.0;
+
+    // Dijkstra's main loop
+    for (int i = 0; i < totalRouters; i++) {
+        int current = -1;
+        double minDist = 1e9;
+
+        for (int j = 0; j < totalRouters; j++) {
+            if (!visited.count(j) && minCost[j] < minDist) {
+                minDist = minCost[j];
+                current = j;
+            }
+        }
+
+        if (current == -1 || current == to) break;
+
+        visited.insert(current);
+
+        cModule *network = getParentModule();
+        RouterNode *currRouter = nullptr;
+
+        for (cModule::SubmoduleIterator it(network); !it.end(); ++it) {
+            cModule *mod = *it;
+            if (strcmp(mod->getName(), "router") == 0 && mod->par("address").intValue() == current) {
+                currRouter = check_and_cast<RouterNode *>(mod);
+                break;
+            }
+        }
+
+        if (!currRouter) continue;
+
+        // For each neighbor, calculate edge weight
+        for (const auto &neighbor : currRouter->neighbors) {
+            int neighborAddr = neighbor.neighborAddress;
+            double linkCost = neighbor.linkCost;
+
+            // Get pheromone and visibility
+            double tau = getPheromone(current, neighborAddr);
+            double eta = getVisibility(current, neighborAddr);
+
+            // CORRECTED: Edge weight = actual cost / pheromone quality
+            // But use a LOWER multiplier so pheromone actually helps
+            double pheromoneQuality = pow(tau, ALPHA) * pow(eta, BETA);
+
+            double edgeWeight;
+            if (pheromoneQuality > 0.001) {
+                // Penalize cost by pheromone: low pheromone = high penalty
+                edgeWeight = linkCost * (1.0 / pheromoneQuality);
+            } else {
+                edgeWeight = linkCost * 1000.0;  // Big penalty for no pheromone
+            }
+
+            double newCost = minCost[current] + edgeWeight;
+
+            // Update if better path found
+            if (newCost < minCost[neighborAddr]) {
+                minCost[neighborAddr] = newCost;
+                prevRouter[neighborAddr] = current;
+            }
         }
     }
 
-    if (!fromRouter) return -1;
-
-    // Check direct connection first
-    for (const auto &neighbor : fromRouter->neighbors) {
-        if (neighbor.neighborAddress == to) {
-            return to;
-        }
+    // Backtrack to find first hop
+    if (minCost[to] == 1e9) {
+        return -1;
     }
 
-    // Weighted scoring: immediate link + downstream path potential
-    double bestScore = -1.0;
-    int bestNextHop = -1;
-
-    for (const auto &neighbor : fromRouter->neighbors) {
-        int nextNode = neighbor.neighborAddress;
-
-        // Immediate link quality
-        double tau = getPheromone(from, nextNode);
-        double eta = getVisibility(from, nextNode);
-
-        // Downstream potential (pheromone from next node to destination)
-        double tau_to_dest = getPheromone(nextNode, to);
-
-        // Combined score with strong weight on downstream path
-        double score = pow(tau, ALPHA) * pow(eta, BETA) * (1.0 + tau_to_dest * 10.0);
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestNextHop = nextNode;
-        }
+    int current = to;
+    while (prevRouter.find(current) != prevRouter.end() && prevRouter[current] != from) {
+        current = prevRouter[current];
     }
 
-    return bestNextHop;
+    if (prevRouter.find(current) != prevRouter.end()) {
+        return current;
+    }
+
+    return -1;
 }
+
 
 
 int RouterNode::getRouterForDevice(int deviceAddress)
 {
-    // Device-to-Router mapping
-    if (deviceAddress == 100) return 0;  // Device 100 → Router 0
-    if (deviceAddress == 101) return 3;  // Device 101 → Router 3
-    if (deviceAddress == 102) return 5;  // Device 102 → Router 5
+    // For 6-router network (Large)
+    if (totalRouters == 6) {
+        if (deviceAddress == 100) return 0;  // Device 0 → Router 0
+        if (deviceAddress == 101) return 3;  // Device 1 → Router 3
+        if (deviceAddress == 102) return 5;  // Device 2 → Router 5
+    }
+    // For 3-router network (Small)
+    else if (totalRouters == 3) {
+        if (deviceAddress == 100) return 0;  // Device 0 → Router 0
+        if (deviceAddress == 101) return 2;  // Device 1 → Router 2
+        if (deviceAddress == 102) return 1;  // Device 2 → Router 1
+    }
     return -1;
 }
 

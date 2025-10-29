@@ -1,49 +1,45 @@
 // AcoNetwork.ned
 package acorouting;
 
-// Simple router node module
 simple RouterNode
 {
     parameters:
-        int address;  // unique router ID
-        int routingMethod = default(0);  // 0=Greedy, 1=MultiHop, 2=Dijkstra
-        @display("i=abstract/router;is=l");  // Larger router icons
+        int address;
+        int routingMethod = default(0);
+        @display("i=abstract/router;is=l");
     gates:
-        inout port[];  // variable number of ports
-        input directIn @directIn;  // dedicated gate for sendDirect()
+        inout port[];
+        input directIn @directIn;
 }
 
-// Device (host) module
 simple Device
 {
     parameters:
-        int address;  // unique device ID
-        int connectedRouter;  // router this device connects to
-        @display("i=device/pc;is=l");  // Larger device icons
+        int address;
+        int connectedRouter;
+        @display("i=device/pc;is=l");
     gates:
-        inout port;  // single connection to router
+        inout port;
 }
 
-// Network module defining topology
-network AcoSimpleNetwork
+// ═══════════════════════════════════════════════════════════
+// LARGE NETWORK: 6 Routers, 3 Devices
+// ═══════════════════════════════════════════════════════════
+network AcoLargeNetwork
 {
     parameters:
-        @display("bgb=900,700;bgg=100,1,grey95");  // Larger canvas with grid
+        @display("bgb=900,700;bgg=100,1,grey95");
 
     submodules:
-        // Routers with individual positions
         router[6]: RouterNode {
             address = index;
-            @display("p=200,300,ring,150,150");  // Ring layout, 150px radius
         }
 
-        // Devices positioned near their routers
         device[3]: Device {
             address = 100 + index;
         }
 
     connections:
-        // Router connections (bidirectional) with thicker blue lines
         router[0].port++ <--> {delay = 10ms; datarate = 1Mbps; @display("ls=blue,2");} <--> router[1].port++;
         router[0].port++ <--> {delay = 15ms; datarate = 1Mbps; @display("ls=blue,2");} <--> router[2].port++;
         router[1].port++ <--> {delay = 12ms; datarate = 1Mbps; @display("ls=blue,2");} <--> router[2].port++;
@@ -53,8 +49,36 @@ network AcoSimpleNetwork
         router[3].port++ <--> {delay = 25ms; datarate = 1Mbps; @display("ls=blue,2");} <--> router[5].port++;
         router[4].port++ <--> {delay = 15ms; datarate = 1Mbps; @display("ls=blue,2");} <--> router[5].port++;
 
-        // Device connections (thinner green lines)
-        device[0].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,1");} <--> router[0].port++;
-        device[1].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,1");} <--> router[3].port++;
-        device[2].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,1");} <--> router[5].port++;
+        device[0].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[0].port++;
+        device[1].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[3].port++;
+        device[2].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[5].port++;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SMALL NETWORK: 3 Routers, 3 Devices (CLEAN LAYOUT)
+// ═══════════════════════════════════════════════════════════
+network AcoSmallNetwork
+{
+    parameters:
+        @display("bgb=800,600;bgg=100,1,grey95");
+
+    submodules:
+        router[3]: RouterNode {
+            address = index;
+        }
+
+        device[3]: Device {
+            address = 100 + index;
+        }
+
+    connections:
+        // Router connections (triangle topology)
+        router[0].port++ <--> {delay = 25ms; datarate = 1Mbps; @display("ls=blue,3");} <--> router[1].port++;
+        router[0].port++ <--> {delay = 10ms; datarate = 1Mbps; @display("ls=blue,3");} <--> router[2].port++;
+        router[1].port++ <--> {delay = 5ms; datarate = 1Mbps; @display("ls=blue,3");} <--> router[2].port++;
+
+        // Device connections
+        device[0].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[0].port++;
+        device[1].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[2].port++;
+        device[2].port <--> {delay = 2ms; datarate = 1Mbps; @display("ls=green,2");} <--> router[1].port++;
 }

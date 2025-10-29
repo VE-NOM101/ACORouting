@@ -52,7 +52,7 @@ private:
     static const double INITIAL_PHEROMONE;
     static const double Q;
     static const int MAX_ITERATIONS;
-    static const int NUM_ANTS;
+    static int NUM_ANTS;  // equal to number of routers (dynamic)
 
     // ACO state
     static int currentIteration;
@@ -103,6 +103,7 @@ private:
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
+    virtual void finish() override;  // ADD THIS LINE
 
 public:
     static double getLinkCost(int nodeA, int nodeB);
